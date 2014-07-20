@@ -56,12 +56,12 @@ public class CoAPClientExtensive extends JPanel  {
 
  	private static final long serialVersionUID = -8656652459991661071L;
      
-	private static final String DEFAULT_URI = "coap://localhost:5683";
+	private static final String DEFAULT_URI = "coap://aaaa::212:7401:1:101:5683";
 	private static final String TESTSERVER_URI = "coap://vs0.inf.ethz.ch:5683";
 	private static final String COAP_PROTOCOL = "coap://";
 
-	public static ArrayList<CoAPPollTask> polledServers = new ArrayList<CoAPPollTask>();
-//	public static ArrayList<ManagePollTasks> pollManagers = new ArrayList<ManagePollTasks>();
+	//public static ArrayList<CoAPPollTask> polledServers = new ArrayList<CoAPPollTask>();
+	private ArrayList<ManagePollTasks> pollManagers = new ArrayList<ManagePollTasks>();
 	private JComboBox cboBR;
 	private JComboBox cboServers;
 	private JTextArea txaPayload;
@@ -95,8 +95,9 @@ public class CoAPClientExtensive extends JPanel  {
 		JButton btnDel = new JButton("DELETE");
 		JButton btnObs = new JButton("Observe");
 		JButton btnRemoveObs = new JButton("Remove Observe");
-		JButton btnPoll = new JButton("Poll");
+		JButton btnAddPoll = new JButton("AddPoll");
 		JButton btnRemovePoll = new JButton("Remove Poll");
+		JButton btnStartPoll = new JButton("Start Poll");
 		JButton btnDisc = new JButton("Discover Server");
 		JButton btnFind = new JButton("Find Servers");
 		final JCheckBox conBox = new JCheckBox("confirmable", true);
@@ -133,7 +134,7 @@ public class CoAPClientExtensive extends JPanel  {
 
 		});
 
-		btnPoll.addActionListener(new ActionListener() {
+		btnAddPoll.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				poll();
 			}
@@ -174,6 +175,15 @@ public class CoAPClientExtensive extends JPanel  {
 			}
 
 		});
+
+		btnStartPoll.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				 startPoll();
+			}
+
+		});
+		
+		
 		
 		conBox.addActionListener(new ActionListener () {
 		public void actionPerformed(ActionEvent e)
@@ -228,7 +238,7 @@ public class CoAPClientExtensive extends JPanel  {
 		JPanel pollPanel = new JPanel(new BorderLayout());
 		pollPanel.add(scrollablePollPane, BorderLayout.CENTER);
 		pollPanel.add(btnRemovePoll, BorderLayout.EAST);
-
+		pollPanel.add(btnStartPoll, BorderLayout.WEST);
 		/* End of observe Panel */
 
 		/* Combine observe and poll panels */
@@ -291,7 +301,7 @@ public class CoAPClientExtensive extends JPanel  {
 
 		JPanel pnlButtonsLower = new JPanel(new GridLayout(1, 5, 2, 2));
 		pnlButtonsLower.setBorder(new EmptyBorder(1, 1, 1, 1));
-		pnlButtonsLower.add(btnPoll);
+		pnlButtonsLower.add(btnAddPoll);
 		pnlButtonsLower.add(pollStartPpsText);
 		pnlButtonsLower.add(pollEndPpsText);
 		pnlButtonsLower.add(pollStepPpsText);
@@ -527,11 +537,11 @@ public class CoAPClientExtensive extends JPanel  {
         fileName = fileNameText.getText();
 		Iterator iterator;
 
-		CoAPPollTask element;
+		ManagePollTasks element;
 
-		iterator = polledServers.iterator();
+		iterator = pollManagers.iterator();
 		while (iterator.hasNext()) {
-			element = (CoAPPollTask) iterator.next();
+			element = (ManagePollTasks) iterator.next();
 			if (element.getURI().equals(uri)) {
 				System.out.println("URI " + uri
 						+ " already exists in poll list");
@@ -544,26 +554,41 @@ public class CoAPClientExtensive extends JPanel  {
 			return;
 		}
 		pollListModel.addElement(uri);
-
-		ManagePollTasks pollManager = new ManagePollTasks(startPps, endPps,
+		element = new ManagePollTasks(startPps, endPps,
 				step, totalPollReq,totalTime, uri, payload, CON, fileName);
+		pollManagers.add(element); 
+		System.out.println("pollManager Size when adding "+element.getURI() + " " + pollManagers.size());
+		
+	}
 
+	public void startPoll() {
+	//	Iterator iterator1;
+		ManagePollTasks element;
+	//iterator1 = pollManagers.iterator();
+		int i = 0;
+		while (i < pollManagers.size()) {
+//			element = (ManagePollTasks) iterator1.next();
+			element = pollManagers.get(i);
+			System.out.println("In startPoll Function, pollManagersSize = " +pollManagers.size()+ "iteration = " +i);
+			element.pollManagerStart();
+			System.out.println(element.getURI()+"Started");
+			i++;
+		}
 	}
 	
-	/* Handler function for observe requests */
-
-	public static boolean removePoll(String uri) {
+	
+	private boolean removePoll(String uri) {
 
 		Iterator iterator;
-		CoAPPollTask element;
-		iterator = polledServers.iterator();
+		ManagePollTasks element;
+		iterator = pollManagers.iterator();
 		while (iterator.hasNext()) {
-			element = (CoAPPollTask) iterator.next();
+			element = (ManagePollTasks) iterator.next();
 			System.out.println(""+element.getURI());
 			if (element.getURI().equals(uri)) {
 				System.out.println("Found poll element" +element.getURI());
-				element.cancel();
-				polledServers.remove(element);
+				element.pollManagerStop();
+				pollManagers.remove(element);
 				return true;
 			}
 			else 
@@ -572,6 +597,9 @@ public class CoAPClientExtensive extends JPanel  {
 		System.out.println("Iterator has no next");
 		return false;
 	}
+
+	
+	/* Handler function for observe requests */
 
 	/* Observe related functions */
 
@@ -755,4 +783,23 @@ public class CoAPClientExtensive extends JPanel  {
 		String host = st.nextToken();
 		return host;
 	}
+}
+
+
+class PollManagerParameters {
+	int startPps, endPps, step, totalPollReq, totalTime; 
+	String uri, fileName, payload;
+	boolean CON;
+	 public PollManagerParameters (int startPps, int endPps, int step, int totalPollReq,
+			 	int totalTime, String uri, String fileName, String payload, boolean con) 	{
+		 this.uri = uri;
+		 this.payload = payload;
+		 this.fileName = fileName;
+		 this.startPps = startPps;
+		 this.endPps = endPps;
+		 this.step = step;
+		 this.totalPollReq = totalPollReq;
+		 this.totalTime = totalTime;
+		 this.CON = con;
+	 }
 }

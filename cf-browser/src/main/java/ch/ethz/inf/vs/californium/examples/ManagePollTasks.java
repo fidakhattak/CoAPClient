@@ -1,5 +1,6 @@
 package ch.ethz.inf.vs.californium.examples;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 
 /* Poll Manager class. An object of this class is created everytime a new poll task
@@ -8,12 +9,15 @@ import java.util.Iterator;
  */
 
 public class ManagePollTasks implements ManagePollInterface{
-	private static int startPps;
-	private static int endPps;
-	private static int step;
+	private int startPps;
+	private int endPps;
+	private int step;
 	private int totalPollRequests,pollTime;
-	private static String uri, payload, fileName;
+	private String uri, payload, fileName;
 	private boolean CON;
+	//public static ArrayList<CoAPPollTask> polledServers = new ArrayList<CoAPPollTask>();
+	private CoAPPollTask coapPollTask;
+	
 	
 	public ManagePollTasks(int startPps, int endPps, int step,
 			int totalPollRequests,int pollTime, String uri, String payload, boolean con, String fileName) {
@@ -27,22 +31,28 @@ public class ManagePollTasks implements ManagePollInterface{
 		this.payload = payload;
 		this.fileName = fileName;
 		this.CON = con; 
-		if (startPps <= endPps)
-			newPollTask();
+		System.out.println("New Manager created for " + this.uri);
 	}
 
+	public void pollManagerStart() {
+		if (this.startPps <= this.endPps)
+			newPollTask();		
+	}
+	public void pollManagerStop() {
+		this.coapPollTask.cancel();		
+	}
 	
 	@Override
 	public void update(CoAPPollTask task) {
 		// TODO Auto-generated method stub
 		
 		System.out.println("Update called");
-		removePoll(task);
 		task.cancel();
 		System.out.println("startPps =" +this.startPps +"endPps = " + this.endPps + "step = " + this.step);
 		if (this.startPps <= this.endPps)
 		newPollTask();
 		else
+			System.out.println(task.getURI()+" Task finished");
 			return;			
 	}
 	
@@ -60,29 +70,31 @@ public class ManagePollTasks implements ManagePollInterface{
 		    requests = totalPollRequests;
 		}
 			
-			CoAPPollTask pollTask = new CoAPPollTask(uri, payload, startPps,
-				requests, time, this, CON, fileName);
-			CoAPClientExtensive.polledServers.add(pollTask);
+			coapPollTask = new CoAPPollTask(this.uri, this.payload, this.startPps,
+				requests, time, this, this.CON, this.fileName);
+			System.out.println("Task created for" + this.uri);
 			System.out.println("startPps = " +this.startPps + "step = " + step);
 			this.startPps += this.step;
 }
+	/*
 	
 	private static void removePoll(CoAPPollTask task) {
-        CoAPClientExtensive.removePoll(task.getURI());
-		
-		/*
+        removePoll(task.getURI());
 		Iterator iterator;
 		CoAPPollTask element;
-		iterator = CoAPClient.polledServers.iterator();
+		iterator = polledServers.iterator();
 		while (iterator.hasNext()) {
 			element = (CoAPPollTask) iterator.next();
 			if (element.equals(task)) {
 				element.cancel();
-				CoAPClient.polledServers.remove(element);
+				polledServers.remove(element);
 			}
 		}
 		return;
 	}
-	*/
-}
+*/
+	public String getURI() {
+		// TODO Auto-generated method stub
+		return this.uri;
+	}
 }

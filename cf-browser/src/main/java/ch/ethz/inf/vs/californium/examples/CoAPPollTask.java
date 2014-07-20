@@ -27,8 +27,9 @@ public class CoAPPollTask extends TimerTask {
 	Timer timer = new Timer(true);
 	private String URI, Payload, fileName;
 	private boolean CON;
-	private static pollTaskStats stats;
+	private pollTaskStats stats;
     private ManagePollInterface callback;
+//    private ManagePollTasks manager;
 	/*Statistics to be kept  */
     static int wait_counter; /*max set to 16 secs currently */
 
@@ -66,7 +67,7 @@ public class CoAPPollTask extends TimerTask {
 			*/
 			request.setURI(URI);
 			request.setPayload(Payload);
-			request.registerResponseHandler(new pollHandler());
+			request.registerResponseHandler(new pollHandler(this));
 			execute(request);
 			stats.setPolReqLeft(stats.getPolReqLeft()-1);
 			//			stats.setCurrentPolReq(stats.getCurrentPolReq()+1);
@@ -122,7 +123,7 @@ public class CoAPPollTask extends TimerTask {
 	static int fileopen =0;	
 
 	/* This function is called by the pollHandler to set the stats for this poll task */
-	public static void setStats(Response response) throws IOException {
+	public void setStats(Response response) throws IOException {
 		/*
 		String dirPath = "/home/fida/"; 
 		String buffer = "";
@@ -162,6 +163,7 @@ public class CoAPPollTask extends TimerTask {
 	    out.flush();
 		out.close();
 		*/
+		System.out.println("setStats called");
 		stats.setCurrentPolRes(stats.getCurrentPolRes()+1);
 		stats.setTotalRTT(stats.getTotalRTT()+response.getRTT());
 
@@ -221,6 +223,7 @@ class pollTaskStats {
 	private int goodPut;
 	private int pollTime;
 	boolean CON;
+	
 	
 	public pollTaskStats(int task_number, int pps, int totalPollRequests,int pollTime, boolean con) {
 		super();
@@ -333,10 +336,12 @@ class pollTaskStats {
 	public void setTotalPayloadSize(int payloadSize) {
 		this.totalPayloadSize = payloadSize;
 	}
+	
 
 	public void calculateGoodPut()
 	{
-		 this.goodPut = (int) (this.totalPayloadSize / ((this.pollEndTime - this.pollStartTime) / 1000));
+		 System.out.println("Poll End Time " +this.pollEndTime + "Poll Start Time" +this.pollStartTime);
+		 this.goodPut = (int) (this.totalPayloadSize / ((this.pollEndTime/ 1000) - (this.pollStartTime/ 1000)));
 	}
 	
 	@Override
@@ -355,12 +360,15 @@ class pollTaskStats {
 
 
 class pollHandler implements ResponseHandler {
-
+	CoAPPollTask pollTask;
+	public pollHandler(CoAPPollTask task) {
+		this.pollTask= task;		
+	}
 	@Override
 	public void handleResponse(Response response) {
 		// TODO Auto-generated method stub
 		try {
-			CoAPPollTask.setStats(response);
+			this.pollTask.setStats(response);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
