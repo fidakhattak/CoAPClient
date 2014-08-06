@@ -38,6 +38,7 @@ import ch.ethz.inf.vs.californium.coap.Message;
 import ch.ethz.inf.vs.californium.coap.OptionNumberRegistry;
 import ch.ethz.inf.vs.californium.coap.Request;
 import ch.ethz.inf.vs.californium.coap.Response;
+
 /**
  * This class matches the request/response pairs using the token option. It must
  * be below the {@link TransferLayer}, which requires set buddies for each
@@ -45,6 +46,7 @@ import ch.ethz.inf.vs.californium.coap.Response;
  * 
  * @author Matthias Kovatsch
  */
+
 public class MatchingLayer extends UpperLayer {
 
 // Members /////////////////////////////////////////////////////////////////////

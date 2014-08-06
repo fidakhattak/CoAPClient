@@ -40,7 +40,7 @@ import ch.ethz.inf.vs.californium.layers.MatchingLayer;
 import ch.ethz.inf.vs.californium.layers.TransferLayer;
 import ch.ethz.inf.vs.californium.layers.UDPLayer;
 import ch.ethz.inf.vs.californium.layers.UpperLayer;
-
+import ch.ethz.inf.vs.californium.layers.CongestionLayer;
 /**
  * The class Communicator provides the message passing system and builds the
  * communication stack through which messages are sent and received. As a
@@ -74,6 +74,7 @@ public class Communicator extends UpperLayer {
 	protected TransferLayer transferLayer;
 	protected MatchingLayer matchingLayer;
 	protected TransactionLayer transactionLayer;
+	protected CongestionLayer congestionLayer;
 	protected AdverseLayer adverseLayer;
 	protected UDPLayer udpLayer;
 	
@@ -94,6 +95,7 @@ public class Communicator extends UpperLayer {
 		transferLayer = new TransferLayer(transferBlockSize);
 		matchingLayer = new MatchingLayer();
 		transactionLayer = new TransactionLayer();
+		congestionLayer = new CongestionLayer();
 		adverseLayer = new AdverseLayer();
 		udpLayer = new UDPLayer(udpPort, runAsDaemon);
 
@@ -177,8 +179,8 @@ public class Communicator extends UpperLayer {
 		tokenLayer.setLowerLayer(transferLayer);
 		transferLayer.setLowerLayer(matchingLayer);
 		matchingLayer.setLowerLayer(transactionLayer);
-		transactionLayer.setLowerLayer(udpLayer);
-		
+		transactionLayer.setLowerLayer(congestionLayer);
+		congestionLayer.setLowerLayer(udpLayer);		
 		//transactionLayer.setLowerLayer(adverseLayer);
 		//adverseLayer.setLowerLayer(udpLayer);
 

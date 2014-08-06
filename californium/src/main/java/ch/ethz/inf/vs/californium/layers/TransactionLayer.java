@@ -78,6 +78,7 @@ public class TransactionLayer extends UpperLayer {
 
 	/** The timer daemon to schedule retransmissions. */
 	private Timer timer = new Timer(true); // run as daemon
+	
 
 	/** The Table to store the transactions of outgoing messages. */
 	private Map<String, Transaction> transactionTable = new HashMap<String, Transaction>();
@@ -100,6 +101,7 @@ public class TransactionLayer extends UpperLayer {
 		int timeout; // to satisfy RESPONSE_RANDOM_FACTOR
 	}
 
+	
 	/**
 	 * The MessageCache is a utility class used for duplicate detection and
 	 * reply retransmissions. It is a ring buffer whose size is configured
@@ -158,17 +160,18 @@ public class TransactionLayer extends UpperLayer {
 	protected void doSendMessage(Message msg) throws IOException {
 
 		// set message ID
-		if (msg.getMID() < 0) {
-			msg.setMID(nextMessageID());
-		}
+//		if (msg.getMID() < 0) {
+//			msg.setMID(nextMessageID());
+//		}
 		
 		// check if message needs confirmation, i.e., a reply is expected
-		if (msg.isConfirmable()) {
+//		if (msg.isConfirmable()) {
 
 			// create new transmission context for retransmissions
-			addTransaction(msg);
+	//		addTransaction(msg);
 
-		} else if (msg.isReply()) {
+//		} else 
+			if (msg.isReply()) {
 
 			// put message into ring buffer in case peer retransmits
 			replyCache.put(msg.transactionKey(), msg);
@@ -233,39 +236,37 @@ public class TransactionLayer extends UpperLayer {
 		}
 
 		// check for reply to CON and remove transaction
-		if (msg.isReply()) {
+	if (msg.isReply()) {
 
 			// retrieve transaction for the incoming message
-			Transaction transaction = getTransaction(msg);
+		//	Transaction transaction = getTransaction(msg);
 
-			if (transaction != null) {
+		if (msg.isAcknowledgement()) {
 
 				// transmission completed
-				removeTransaction(transaction);
+		//		removeTransaction(transaction);
 				
-				if (msg.isEmptyACK()) {
-					
+				if (msg.isEmptyACK()) {		
 					// transaction is complete, no information for higher layers
 					return;
-					
-				} else if (msg.getType()==Message.messageType.RST) {
+					}
+				else if (msg.getType()==Message.messageType.RST) {
 					
 					handleIncomingReset(msg);
 					return;
-				}
-				
-			} else if (msg.getType()==Message.messageType.RST) {
+				}	
+			} 
+			else if (msg.getType()==Message.messageType.RST) {
 				
 				handleIncomingReset(msg);
 				return;
-
-			} else {
-				
+			} 	 
+			else {
 				// ignore unexpected reply except RST, which could match to a NON sent by the endpoint
 				LOG.warning(String.format("Dropped unexpected reply: %s", msg.key()));
 				return;
+				}
 			}
-		}
 		
 		// Only accept Responses here, Requests must be handled at application level 
 		if (msg instanceof Response && msg.isConfirmable()) {
