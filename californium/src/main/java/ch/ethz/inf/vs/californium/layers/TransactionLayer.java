@@ -229,19 +229,19 @@ public class TransactionLayer extends UpperLayer {
 				return;
 			}
 
-		} else {
+		} /*else {
 
 			// cache received message
 			dupCache.put(msg.key(), msg);
 		}
-
+*/
 		// check for reply to CON and remove transaction
 	if (msg.isReply()) {
 
 			// retrieve transaction for the incoming message
 		//	Transaction transaction = getTransaction(msg);
 
-		if (msg.isAcknowledgement()) {
+	//	if (msg.isAcknowledgement()) {
 
 				// transmission completed
 		//		removeTransaction(transaction);
@@ -255,18 +255,18 @@ public class TransactionLayer extends UpperLayer {
 					handleIncomingReset(msg);
 					return;
 				}	
-			} 
-			else if (msg.getType()==Message.messageType.RST) {
+	//}
+		/*	else if (msg.getType()==Message.messageType.RST) {
 				
 				handleIncomingReset(msg);
 				return;
-			} 	 
-			else {
+			}*/ 	 
+		/*	else {
 				// ignore unexpected reply except RST, which could match to a NON sent by the endpoint
 				LOG.warning(String.format("Dropped unexpected reply: %s", msg.key()));
 				return;
 				}
-			}
+*/			}
 		
 		// Only accept Responses here, Requests must be handled at application level 
 		if (msg instanceof Response && msg.isConfirmable()) {

@@ -27,7 +27,8 @@ private Map<String, Flow> flowTable = new HashMap<String, Flow>(); //transaction
 			String flowID; //unique flowid, url used for this purpose 
 			private int messageID = (int) (Math.random() * 0x10000);  //Message ID global for all transactions of this flow
 			private LinkedList<Transaction> fifoQueue = new LinkedList<Transaction>(); //transaction table
-			private Map<String, Transaction> inflightQueue = new HashMap<String, Transaction>();
+			private Map<String, Transaction> inflightCache = new HashMap<String, Transaction>();
+		//	private Map<String, Transaction> transactionTable = new HashMap<String, Transaction>(); //keep list of all transactions, inflight+queue 
 			private Timer timer = new Timer(true); 
 			private final int maxInflightQueueSize = 1;
 			
@@ -77,30 +78,32 @@ private Map<String, Flow> flowTable = new HashMap<String, Flow>(); //transaction
 					}
 					transaction.numRetransmit = 0;
 					transaction.retransmitTask = null;
-	
 					fifoQueue.addLast(transaction);
 	
 					// schedule first retransmission ... NOT HERE BUT AT FLUSHING
 				//	scheduleRetransmission(transaction);
 					
-					LOG.warning(String.format("Stored new transaction for %s", msg.key()));
+					LOG.warning(String.format("Stored new transaction for %s", msg.transactionKey()));
 	
 					return transaction;
 				}
 			
 			private synchronized void removeTransaction(Message msg) {
-
-				Transaction transaction = inflightQueue.get(msg.key());
 				
-				// cancel any pending retransmission schedule
-				transaction.retransmitTask.cancel();
-				transaction.retransmitTask = null;
-				
-				// remove transaction from table
-				inflightQueue.remove(transaction);
-				flushQueue();
-				LOG.finest(String.format("Cleared transaction for %s", transaction.msg.key()));
-			}
+				LOG.warning(String.format("finding transaction for %s", msg.transactionKey()));
+				Transaction transaction = inflightCache.get(msg.transactionKey());
+				if (transaction != null) {
+					LOG.warning(String.format("found transaction for %s", msg.transactionKey()));
+					// cancel any pending retransmission schedule
+					transaction.retransmitTask.cancel();
+					transaction.retransmitTask = null;
+					
+					// remove transaction from table
+					inflightCache.remove(transaction.msg.transactionKey());
+					LOG.warning(String.format("Cleared transaction for %s", transaction.msg.transactionKey()));
+					flushQueue();
+				}		
+		}
 			
 			private int initialTimeout() {
 				
@@ -142,11 +145,12 @@ private Map<String, Flow> flowTable = new HashMap<String, Flow>(); //transaction
 
 			public void flushQueue() {
 				// TODO Auto-generated method stub
-				LOG.warning(String.format("FlushQueue Called, inflightQueueSize %d", inflightQueue.size()));
-				while (inflightQueue.size() <= maxInflightQueueSize) {
+				LOG.warning(String.format("FlushQueue Called, inflightQueueSize %d, fifoQueueSize %d", inflightCache.size(), fifoQueue.size()));
+				while ((inflightCache.size() <= maxInflightQueueSize) && (fifoQueue.size() > 0) ) {
 					Transaction transaction = fifoQueue.pollFirst();
+					LOG.warning(String.format("After polling fifoQueueSize %d", fifoQueue.size()));
 					if (transaction != null) {
-						inflightQueue.put(transaction.msg.key(), transaction);
+						inflightCache.put(transaction.msg.transactionKey(), transaction);
 						scheduleRetransmission(transaction);
 						try {
 							sendCCMessage(transaction.msg);
@@ -202,9 +206,9 @@ private Map<String, Flow> flowTable = new HashMap<String, Flow>(); //transaction
 @Override
 	protected void doSendMessage(Message msg) throws IOException {
 	// TODO Auto-generated method stub
-	LOG.warning(String.format("doSendMessage called for %s", msg.key()));
+	LOG.warning(String.format("doSendMessage called for %s", msg.getPeerAddress().toString()));
 	if (msg.isConfirmable()) {
-		String key = msg.getPeerAddress()+msg.getUriPath();
+		String key = msg.getPeerAddress().toString();
 		Flow flow = flowTable.get(key);
 		if (flow == null) {
 			/*Create a new flow and do all the necessary initializations*/
@@ -226,9 +230,9 @@ private Map<String, Flow> flowTable = new HashMap<String, Flow>(); //transaction
 @Override
 	protected void doReceiveMessage(Message msg) {
 	// TODO Auto-generated method stub
-	LOG.warning(String.format("doReceiveMessage called for %s", msg.key()));
+	LOG.warning(String.format("doReceiveMessage called for %s", msg.getPeerAddress().toString()));
 	if (msg.isAcknowledgement()) {
-		String key = msg.getPeerAddress()+msg.getUriPath();
+		String key = msg.getPeerAddress().toString();
 		Flow flow = flowTable.get(key); 
 		LOG.warning(String.format("%s message is ACK ", msg.key()));
 		if (flow != null) {
