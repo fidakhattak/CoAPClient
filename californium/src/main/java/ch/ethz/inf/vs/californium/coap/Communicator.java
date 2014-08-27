@@ -104,6 +104,13 @@ public class Communicator extends UpperLayer {
 		
 	}
 	
+	public boolean isFree(String key) {
+		if (congestionLayer.isFree(key))
+		return true;
+		else
+		return false;
+	}
+	
 	public static Communicator getInstance() {
 		
 		if (singleton==null) {
@@ -183,7 +190,6 @@ public class Communicator extends UpperLayer {
 		congestionLayer.setLowerLayer(udpLayer);		
 		//transactionLayer.setLowerLayer(adverseLayer);
 		//adverseLayer.setLowerLayer(udpLayer);
-
 	}
 
 	// I/O implementation //////////////////////////////////////////////////////

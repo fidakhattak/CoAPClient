@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -47,8 +46,6 @@ import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
-import java.awt.event.*;
-
 import ch.ethz.inf.vs.californium.coap.*;
 
 
@@ -526,12 +523,12 @@ public class CoAPClientExtensive extends JPanel  {
 		String uri = cboServers.getSelectedItem().toString()
 				.replace(" ", "%20");
 		String payload = txaPayload.getText();
-		int startPps, endPps, step;
+		float startPps, endPps, step;
 		int totalPollReq,totalTime;
 		String fileName;
-		startPps = Integer.parseInt(pollStartPpsText.getText());
-		endPps = Integer.parseInt(pollEndPpsText.getText());
-		step = Integer.parseInt(pollStepPpsText.getText());
+		startPps = Float.parseFloat(pollStartPpsText.getText());
+		endPps = Float.parseFloat(pollEndPpsText.getText());
+		step = Float.parseFloat(pollStepPpsText.getText());
 		totalPollReq = Integer.parseInt(pollTotReqText.getText());
 		totalTime = Integer.parseInt(totalTimeText.getText());
         fileName = fileNameText.getText();
@@ -787,10 +784,11 @@ public class CoAPClientExtensive extends JPanel  {
 
 
 class PollManagerParameters {
-	int startPps, endPps, step, totalPollReq, totalTime; 
+	float startPps, endPps, step;
+	int totalPollReq, totalTime; 
 	String uri, fileName, payload;
 	boolean CON;
-	 public PollManagerParameters (int startPps, int endPps, int step, int totalPollReq,
+	 public PollManagerParameters (float startPps, float endPps, float step, int totalPollReq,
 			 	int totalTime, String uri, String fileName, String payload, boolean con) 	{
 		 this.uri = uri;
 		 this.payload = payload;

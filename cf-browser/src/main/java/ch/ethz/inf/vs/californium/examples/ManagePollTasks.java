@@ -9,9 +9,7 @@ import java.util.Iterator;
  */
 
 public class ManagePollTasks implements ManagePollInterface{
-	private int startPps;
-	private int endPps;
-	private int step;
+	private float startPps, endPps, step;
 	private int totalPollRequests,pollTime;
 	private String uri, payload, fileName;
 	private boolean CON;
@@ -19,7 +17,7 @@ public class ManagePollTasks implements ManagePollInterface{
 	private CoAPPollTask coapPollTask;
 	
 	
-	public ManagePollTasks(int startPps, int endPps, int step,
+	public ManagePollTasks(float startPps, float endPps, float step,
 			int totalPollRequests,int pollTime, String uri, String payload, boolean con, String fileName) {
 		super();
 		this.startPps = startPps;
@@ -61,12 +59,12 @@ public class ManagePollTasks implements ManagePollInterface{
 		int time=0;
 		
 		if (pollTime !=0) {
-			requests = pollTime * startPps;
+			requests =  (int) (pollTime * startPps);
 		    time = pollTime;
 		}
 		else 
 		if (pollTime ==0 && totalPollRequests !=0) {
-			time = totalPollRequests/startPps;
+			time = (int) (totalPollRequests/startPps);
 		    requests = totalPollRequests;
 		}
 			

@@ -21,6 +21,8 @@ import ch.ethz.inf.vs.californium.coap.Request;
 import ch.ethz.inf.vs.californium.coap.Response;
 import ch.ethz.inf.vs.californium.coap.ResponseHandler;
 import ch.ethz.inf.vs.californium.coap.TokenManager;
+import ch.ethz.inf.vs.californium.coap.Communicator;
+import ch.ethz.inf.vs.californium.util.Properties;
 
 public class CoAPPollTask extends TimerTask {
 
@@ -28,43 +30,46 @@ public class CoAPPollTask extends TimerTask {
 	private String URI, Payload, fileName;
 	private boolean CON;
 	private pollTaskStats stats;
+	private String peerAddress;
     private ManagePollInterface callback;
 //    private ManagePollTasks manager;
 	/*Statistics to be kept  */
     static int wait_counter; /*max set to 16 secs currently */
 
 
-	CoAPPollTask(String uri, String payload, int freq, int totalPolReq, int pollTime, boolean con, String fileName) {	
+	CoAPPollTask(String uri, String payload, float freq, int totalPolReq, int pollTime, boolean con, String fileName) {	
 			initialize(uri, payload, freq, totalPolReq, pollTime, con, fileName);
 	}
 
-	CoAPPollTask(String uri, String payload, int freq, int totalPolReq,int pollTime, ManagePollInterface callback, boolean con, String fileName) {	
+	CoAPPollTask(String uri, String payload, float freq, int totalPolReq,int pollTime, ManagePollInterface callback, boolean con, String fileName) {	
 		initialize(uri, payload, freq, totalPolReq, pollTime, con, fileName);
 		this.callback = callback;
 }
 
-	private void initialize (String uri, String payload, int freq, int totalPolReq, int pollTime, boolean con, String filename)
+	private void initialize (String uri, String payload, float freq, int totalPolReq, int pollTime, boolean con, String filename)
 	{
 		URI = uri;
 		Payload = payload;
 		fileName = filename;
 		System.out.println("Freq == " + freq);
 		stats = new pollTaskStats(1, freq, totalPolReq, pollTime, con);
-		timer.schedule(this, 0, 1000/freq);
+		timer.schedule(this,(long) Math.ceil(Math.random()*500), (long) (1000/freq));
 		wait_counter = 0;
         fileName = filename;
 		CON = con;		
+		peerAddress = null;
 	}
 
 	public void run() {
-		
+
 		if (stats.getPolReqLeft() > 0) {
 			GETRequest request = new GETRequest(CON);
+
 			/*  Probably forces errors at the moment after retransmissions
 			if (request.requiresToken()) {
 				request.setToken(TokenManager.getInstance().acquireToken());
 			}
-			*/
+			 */
 			request.setURI(URI);
 			request.setPayload(Payload);
 			request.registerResponseHandler(new pollHandler(this));
@@ -72,40 +77,43 @@ public class CoAPPollTask extends TimerTask {
 			stats.setPolReqLeft(stats.getPolReqLeft()-1);
 			//			stats.setCurrentPolReq(stats.getCurrentPolReq()+1);
 		}
-	
-		/*If there are still outstanding requests to this task, wait for a maximum
-		 * of 32 seconds before saving the stats and exiting */
-		
 		else
-		if (stats.getOutstandingRequests() > 0 && stats.getPolReqLeft() == 0 ) {
-			while (wait_counter < 20 && stats.getOutstandingRequests() > 0) 
-             {
+			if(stats.getOutstandingRequests() == 0 && stats.getPolReqLeft() <= 0) { 
 				try {
-					Thread.sleep(100);
-				} catch (InterruptedException e) {
-				//	 TODO Auto-generated catch block
+					exit();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
 					e.printStackTrace();
-				}
-				wait_counter++;
+				} 
 			}
-             try {
-				exit();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		 }
-		
 		else
-		if(stats.getOutstandingRequests() == 0 && stats.getPolReqLeft() <= 0)
-			try {
-				exit();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			if (stats.getOutstandingRequests() > 0 && stats.getPolReqLeft() == 0 ) {
+				Communicator communicator = Communicator.getInstance();				
+				System.out.println("key for communicator free is "+peerAddress);
+				/*Check if the FiFoQueue is still holding some packets, wait until empty*/
+				while (!communicator.isFree(peerAddress)) {
+					try { 
+						Thread.sleep(100); }
+					catch (InterruptedException e) { 
+						e.printStackTrace();}
+				}
+				/*wait 8 seconds if there are still outstanding packets*/
+				while (stats.getOutstandingRequests() > 0 && wait_counter < 80) {
+						try { 
+							Thread.sleep(100);}
+						catch (InterruptedException e) {							
+							e.printStackTrace();}
+							wait_counter++;
+							}
+				/*exit now saving stats*/
+					try {
+						exit(); } 
+					catch (IOException e) {
+					e.printStackTrace(); } 
 			}
 	}
 
+	
 	private void exit() throws IOException {
 		saveStats();
 		fileopen=0;
@@ -166,7 +174,10 @@ public class CoAPPollTask extends TimerTask {
 		System.out.println("setStats called");
 		stats.setCurrentPolRes(stats.getCurrentPolRes()+1);
 		stats.setTotalRTT(stats.getTotalRTT()+response.getRTT());
-
+		if (peerAddress == null) {
+			peerAddress = response.getPeerAddress().toString();
+		}
+		
 		/* Total Retransmissions for this tasks. A single packet retransmitted multiple times is multiple retransmissions*/
 		if (stats.CON) {
 		stats.setTotRetransmissions(stats.getTotRetransmissions()+response.getRequest().getRetransmissioned());
@@ -174,7 +185,6 @@ public class CoAPPollTask extends TimerTask {
 		stats.getOutstandingRequests();
 		stats.setTotalPayloadSize(stats.getTotalPayloadSize()+response.getPayload().length);
 	}	
-
 	/* This function save stats in a file. It is called before calling the 
 	 * manager.update() function in exit ()
 	 *  */
@@ -215,7 +225,7 @@ class pollTaskStats {
 	private  int totalPollRequests;
 	private  int currentPolRes;
 	private  int polReqLeft;
-	private  int pps;
+	private  float pps;
 	private  int outstandingRequests;
 	private long pollStartTime;
 	private long pollEndTime;
@@ -225,10 +235,10 @@ class pollTaskStats {
 	boolean CON;
 	
 	
-	public pollTaskStats(int task_number, int pps, int totalPollRequests,int pollTime, boolean con) {
+	public pollTaskStats(int task_number, float freq, int totalPollRequests,int pollTime, boolean con) {
 		super();
 		this.task_number = task_number;
-		this.pps = pps;
+		this.pps = freq;
 		this.totalPollRequests = totalPollRequests;
 		this.polReqLeft=totalPollRequests;
 		this.CON = con;
@@ -316,11 +326,11 @@ class pollTaskStats {
 		this.polReqLeft = polReqLeft;
 	}
 
-	public int getPps() {
+	public float getPps() {
 		return pps;
 	}
 
-	public void setPps(int pps) {
+	public void setPps(float pps) {
 		this.pps = pps;
 	}
 
@@ -348,7 +358,7 @@ class pollTaskStats {
 	public String toString() {
 		 
 		  return Integer.toString(pollTime) + "\t"
-				+ Integer.toString(pps) + "\t" 
+				+ Float.toString(pps) + "\t" 
 				+ Double.toString(averageRTT)+ "\t"
 				+ Integer.toString(totRetransmissions)+ "\t"
 				+ Integer.toString(totalPollRequests) + "\t" 
